@@ -1,1 +1,0 @@
-package hongik.pcrc.gotbetterserver.application.domain;

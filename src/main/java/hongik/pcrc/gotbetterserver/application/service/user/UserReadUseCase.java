@@ -1,9 +1,8 @@
 package hongik.pcrc.gotbetterserver.application.service.user;
 
-import hongik.pcrc.gotbetterserver.application.domain.User;
-
 public interface UserReadUseCase {
 
+    boolean checkUserIdDuplicate(String userId);
 
-
+    boolean checkUserNicknameDuplicate(String nickname);
 }

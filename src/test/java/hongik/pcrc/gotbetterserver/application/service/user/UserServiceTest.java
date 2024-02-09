@@ -1,17 +1,12 @@
 package hongik.pcrc.gotbetterserver.application.service.user;
 
 import hongik.pcrc.gotbetterserver.application.domain.User;
-import hongik.pcrc.gotbetterserver.infrastructure.persistance.mysql.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import org.aspectj.lang.annotation.Before;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Transactional
@@ -25,7 +20,7 @@ class UserServiceTest {
         // given
         User userA = User.builder()
                 .id(1)
-                .userId("userA")
+                .userId("testUserA")
                 .password("1234")
                 .nickname("hello")
                 .build();
@@ -33,7 +28,6 @@ class UserServiceTest {
         User user = userService.createUser(userA);
         // then
         assertThat(user.getUserId()).isEqualTo("userA");
-
     }
 
     @Test
@@ -41,7 +35,7 @@ class UserServiceTest {
         // given
         User userA = User.builder()
                 .id(1)
-                .userId("userA")
+                .userId("철수")
                 .password("1234")
                 .nickname("hello")
                 .build();
@@ -50,8 +44,12 @@ class UserServiceTest {
         // when
         boolean check1 = userService.checkUserIdDuplicate("userA");
         boolean check2 = userService.checkUserIdDuplicate("hello");
+        boolean check3 = userService.checkUserIdDuplicate("usera");
+        boolean check4 = userService.checkUserIdDuplicate("철수");
         // then
-        assertThat(check1).isTrue();
+        assertThat(check1).isFalse();
         assertThat(check2).isFalse();
+        assertThat(check3).isFalse();
+        assertThat(check4).isTrue();
     }
 }

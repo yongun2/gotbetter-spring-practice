@@ -34,25 +34,21 @@ public class UserController {
     public ResponseEntity<ApiResponseView<UserView>> signup(@RequestBody @Validated UserCreateRequest createRequest) {
 
         // check id pattern
-        String userIdPattern = "^[a-z0-9_-]{5,20}$";
-        Matcher userIdMatcher = Pattern.compile(userIdPattern)
-                .matcher(createRequest.getUserId());
+        Matcher userIdMatcher = validateUserId(createRequest.getUserId());
 
         if (!userIdMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
         }
 
         // check password pattern
-        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()-_=+\\\\|{};:'\",<.>/?])[A-Za-z\\d!@#$%^&*()-_=+\\\\|{};:'\",<.>/?]{8,16}$";
-        Matcher passwordMatcher = Pattern.compile(passwordPattern)
-                .matcher(createRequest.getPassword());
+        Matcher passwordMatcher = validatePassword(createRequest.getPassword());
 
         if (!passwordMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_PASSWORD_PATTERN);
         }
 
         // check nickname pattern
-        if (createRequest.getNickname().length() < 4 || createRequest.getNickname().length() > 12) {
+        if (validateNickname(createRequest.getNickname())) {
             throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
         }
 
@@ -72,7 +68,6 @@ public class UserController {
                 .body(new ApiResponseView<>(new UserView(createdUser)));
 
     }
-
     @GetMapping("/duplicate")
     public ResponseEntity<ApiResponseView<UserView>> checkDuplicate(@RequestParam @Nullable String userId, @RequestParam @Nullable String nickname) {
 
@@ -85,7 +80,7 @@ public class UserController {
         // check is userId duplicate
         if (userId != null) {
 
-            if(userId.isBlank()) {
+            if(!validateUserId(userId).matches()) {
                 throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
             }
 
@@ -102,7 +97,7 @@ public class UserController {
         // check is nickname duplicate
         if (nickname != null) {
 
-            if(nickname.isBlank()) {
+            if(!validateNickname(nickname)) {
                 throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
             }
 
@@ -122,5 +117,21 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(new ApiResponseView<>(new UserView(result)));
+    }
+
+    private Matcher validateUserId(String userId) {
+        String userIdPattern = "^[a-z0-9_-]{5,20}$";
+        return Pattern.compile(userIdPattern)
+                .matcher(userId);
+    }
+
+    private Matcher validatePassword(String password) {
+        String passwordPattern = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?]{8,16}$";
+        return Pattern.compile(passwordPattern)
+                .matcher(password);
+    }
+
+    private boolean validateNickname(String nickname) {
+        return !nickname.isBlank() && nickname.length() >= 2 && nickname.length() <= 12;
     }
 }

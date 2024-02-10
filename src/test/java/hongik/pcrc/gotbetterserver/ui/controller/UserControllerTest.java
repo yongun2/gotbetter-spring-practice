@@ -20,6 +20,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -222,7 +224,94 @@ class UserControllerTest {
 
     }
 
+    @Test
+    @DisplayName("아이디 검증 테스트")
+    void validateUserId() {
+        // given
+        String shortLengthError = "he";
+        String longLengthError = "hellohellohellohellohello";
+        String blankError = "";
+        String notAllowedCharacterError1 = "testUser";
+        String notAllowedCharacterError2 = "testuser#";
+        String notAllowedCharacterError3 = "testuser한글";
+        String ok1 = "test123";
+        String ok2 = "test-123";
+        String ok3 = "user_123131-hello-";
+        // when
 
+        // then
+        assertThat(validateUserId(shortLengthError).matches()).isFalse();
+        assertThat(validateUserId(longLengthError).matches()).isFalse();
+        assertThat(validateUserId(blankError).matches()).isFalse();
+        assertThat(validateUserId(notAllowedCharacterError1).matches()).isFalse();
+        assertThat(validateUserId(notAllowedCharacterError2).matches()).isFalse();
+        assertThat(validateUserId(notAllowedCharacterError3).matches()).isFalse();
+        assertThat(validateUserId(ok1).matches()).isTrue();
+        assertThat(validateUserId(ok2).matches()).isTrue();
+        assertThat(validateUserId(ok3).matches()).isTrue();
+
+    }
+    @Test
+    @DisplayName("비밀번호 검증 테스트")
+    void validatePassword() {
+        // given
+        String shortLengthError = "qwe!";
+        String longLengthError = "qwer!qwerwqrewqrwqrwqe";
+        String specialCharacterRequiredError = "qwer1234";
+        String blank = "";
+        String ok1 = "qwer!1234";
+        String ok2 = "qwer!@3#";
+        String ok3 = "Qerw12!2@#";
+        String ok4 = "Qerw12][@#";
+        // when
+
+        // then
+        assertThat(validatePassword(shortLengthError).matches()).isFalse();
+        assertThat(validatePassword(longLengthError).matches()).isFalse();
+        assertThat(validatePassword(specialCharacterRequiredError).matches()).isFalse();
+        assertThat(validatePassword(blank).matches()).isFalse();
+        assertThat(validatePassword(ok1).matches()).isTrue();
+        assertThat(validatePassword(ok2).matches()).isTrue();
+        assertThat(validatePassword(ok3).matches()).isTrue();
+        assertThat(validatePassword(ok4).matches()).isTrue();
+    }
+
+    @Test
+    @DisplayName("닉네임 검증 테스트")
+    void validateNickname() {
+        // given
+        String blank = "";
+        String shortLength = "d";
+        String longLength = "fksfjklsdfjlkdsjflkdsjflksdjfkdsljflkdsjfklsd";
+        String kor = "안녕하세요";
+        String ok = "testUSerA";
+        String longLength2 = "안녕하세요안녕하세요안녕하세요";
+        // when
+
+        // then
+        assertThat(validateNickname(blank)).isFalse();
+        assertThat(validateNickname(shortLength)).isFalse();
+        assertThat(validateNickname(longLength)).isFalse();
+        assertThat(validateNickname(longLength2)).isFalse();
+        assertThat(validateNickname(kor)).isTrue();
+        assertThat(validateNickname(ok)).isTrue();
+    }
+
+    private Matcher validateUserId(String userId) {
+        String userIdPattern = "^[a-z0-9_-]{5,20}$";
+        return Pattern.compile(userIdPattern)
+                .matcher(userId);
+    }
+
+    private Matcher validatePassword(String password) {
+        String passwordPattern = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?]{8,16}$";
+        return Pattern.compile(passwordPattern)
+                .matcher(password);
+    }
+
+    private boolean validateNickname(String nickname) {
+        return !nickname.isBlank() && nickname.length() >= 2 && nickname.length() <= 12;
+    }
 
     @Getter
     @Builder

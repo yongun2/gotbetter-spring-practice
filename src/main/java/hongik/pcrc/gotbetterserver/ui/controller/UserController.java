@@ -48,7 +48,7 @@ public class UserController {
         }
 
         // check nickname pattern
-        if (validateNickname(createRequest.getNickname())) {
+        if (!validateNickname(createRequest.getNickname())) {
             throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
         }
 

@@ -9,7 +9,7 @@ public interface UserReadUseCase {
 
     User findUserByUsername(String userId);
 
-    boolean checkUserIdDuplicate(String userId);
+    boolean checkUsernameDuplicate(String userId);
 
     boolean checkUserNicknameDuplicate(String nickname);
 

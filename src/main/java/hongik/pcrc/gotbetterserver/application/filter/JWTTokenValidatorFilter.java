@@ -36,25 +36,23 @@ public class JWTTokenValidatorFilter extends OncePerRequestFilter {
         String jwt = request.getHeader(SecurityConstants.JWT_HEADER);
 
         if (jwt != null) {
-            try {
-                Claims claims = jwtTokenProvider.parseClaims(jwt);
-                String nickname = String.valueOf(claims.get("nickname"));
 
-                Optional<UserEntity> user = userRepository.findUserEntityByNickname(nickname);
+            Claims claims = jwtTokenProvider.parseClaims(jwt);
+            String nickname = String.valueOf(claims.get("nickname"));
 
-                user.ifPresentOrElse(
-                        (userEntity -> {
-                            JWTAuthenticationToken auth = new JWTAuthenticationToken(userEntity.getNickname(), null);
-                            auth.setDetails(userEntity.toUser());
-                            SecurityContextHolder.getContext().setAuthentication(auth);
-                        }),
-                        () -> {
-                            throw new GotbetterException(MessageType.USER_NOT_FOUND);
-                        }
-                );
-            } catch (ExpiredJwtException err) {
-                throw new GotbetterException(MessageType.TOKEN_EXPIRED);
-            }
+            Optional<UserEntity> user = userRepository.findUserEntityByNickname(nickname);
+
+            user.ifPresentOrElse(
+                    (userEntity -> {
+                        JWTAuthenticationToken auth = new JWTAuthenticationToken(userEntity.getNickname(), null);
+                        auth.setDetails(userEntity.toUser());
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    }),
+                    () -> {
+                        throw new GotbetterException(MessageType.USER_NOT_FOUND);
+                    }
+            );
+
         }
 
         filterChain.doFilter(request, response);

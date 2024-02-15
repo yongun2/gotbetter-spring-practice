@@ -4,6 +4,7 @@ import hongik.pcrc.gotbetterserver.application.domain.auth.JWTToken;
 import hongik.pcrc.gotbetterserver.exception.GotbetterException;
 import hongik.pcrc.gotbetterserver.exception.MessageType;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -41,7 +42,7 @@ public class JWTTokenProvider {
                 .subject("USER")
                 .claim("nickname", authentication.getPrincipal())
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() - ACCESS_TOKEN_EXPIRATION_TIME))
+                .expiration(new Date(now.getTime() + ACCESS_TOKEN_EXPIRATION_TIME))
                 .signWith(key)
                 .compact();
 
@@ -67,6 +68,8 @@ public class JWTTokenProvider {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
+        } catch (ExpiredJwtException e) {
+            throw new GotbetterException(MessageType.TOKEN_EXPIRED);
         } catch (JwtException e) {
             throw new GotbetterException(MessageType.INVALID_TOKEN);
         }

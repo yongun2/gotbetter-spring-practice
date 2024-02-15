@@ -27,22 +27,33 @@ public class UserService implements UserOperationUseCase, UserReadUseCase {
     private final JWTTokenProvider jwtTokenProvider;
 
     @Override
-    public User createUser(User user) {
+    public User createUser(User request) {
 
         // check isDuplicate userId
-        Optional<UserEntity> userEntityByUserId = userRepository.findUserEntityByUsername(user.getUsername());
+        Optional<UserEntity> userEntityByUserId = userRepository.findUserEntityByUsername(request.getUsername());
 
         if (userEntityByUserId.isPresent()) {
             throw new GotbetterException(MessageType.DUPLICATED_USER_ID);
         }
 
         // check isDuplicate nickname
-        Optional<UserEntity> userEntityByNickname = userRepository.findUserEntityByNickname(user.getNickname());
+        Optional<UserEntity> userEntityByNickname = userRepository.findUserEntityByNickname(request.getNickname());
         if (userEntityByNickname.isPresent()) {
             throw new GotbetterException(MessageType.DUPLICATE_NICKNAME);
         }
 
-        return userRepository.save(new UserEntity(user)).toUser();
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        User newUser = User.builder()
+                .username(request.getUsername())
+                .password(encodedPassword)
+                .nickname(request.getNickname())
+                .email(request.getEmail())
+                .build();
+
+        userRepository.save(new UserEntity(newUser));
+
+        return newUser;
     }
 
     @Override
@@ -91,7 +102,7 @@ public class UserService implements UserOperationUseCase, UserReadUseCase {
 
 
     @Override
-    public boolean checkUserIdDuplicate(String userId) {
+    public boolean checkUsernameDuplicate(String userId) {
         return userRepository.findUserEntityByUsername(userId).isPresent();
     }
 

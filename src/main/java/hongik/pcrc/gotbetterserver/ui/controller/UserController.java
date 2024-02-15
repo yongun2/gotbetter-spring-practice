@@ -19,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,9 +32,6 @@ import java.util.regex.Pattern;
 public class UserController {
 
     private final UserService userService;
-
-    private final PasswordEncoder passwordEncoder;
-
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponseView<UserView>> signup(@RequestBody @Validated UserCreateRequest createRequest) {
@@ -63,13 +59,10 @@ public class UserController {
             throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
         }
 
-        // password encode before store
-        String encodedPassword = passwordEncoder.encode(createRequest.getPassword());
-
         User createdUser = userService.createUser(
                 User.builder()
                         .username(createRequest.getUsername())
-                        .password(encodedPassword)
+                        .password(createRequest.getPassword())
                         .nickname(createRequest.getNickname())
                         .build()
         );
@@ -107,7 +100,7 @@ public class UserController {
                 throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
             }
 
-            isDuplicate = userService.checkUserIdDuplicate(userId);
+            isDuplicate = userService.checkUsernameDuplicate(userId);
             if (isDuplicate) {
                 throw new GotbetterException(MessageType.DUPLICATED_USER_ID);
             }

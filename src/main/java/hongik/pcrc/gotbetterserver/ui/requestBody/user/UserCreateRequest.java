@@ -11,7 +11,7 @@ import lombok.ToString;
 @NoArgsConstructor
 public class UserCreateRequest {
     @NotNull
-    private String userId;
+    private String username;
     @NotBlank
     private String password;
     @NotBlank

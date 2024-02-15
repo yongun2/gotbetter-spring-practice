@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import org.aspectj.lang.annotation.After;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,7 +25,7 @@ class UserRepositoryTest {
     void userCreate() {
         User userA = User.builder()
                 .id(1)
-                .userId("hello")
+                .username("hello")
                 .password("world")
                 .nickname("userA")
                 .build();
@@ -47,22 +48,19 @@ class UserRepositoryTest {
         //given
         User userA = User.builder()
                 .id(1)
-                .userId("hello")
+                .username("hello")
                 .password("world")
                 .nickname("userA")
                 .build();
         //when
         userRepository.save(new UserEntity(userA));
 
-        Optional<UserEntity> hello = userRepository.findUserEntityByUserId("hello");
-        Optional<UserEntity> abs = userRepository.findUserEntityByUserId("abs");
+        Optional<UserEntity> hello = userRepository.findUserEntityByUsername("hello");
+        Optional<UserEntity> abs = userRepository.findUserEntityByUsername("abs");
 
         //then
         assertThat(hello.isPresent()).isTrue();
         assertThat(abs.isPresent()).isFalse();
 
     }
-
-
-
 }

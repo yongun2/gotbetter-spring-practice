@@ -1,7 +1,6 @@
 package hongik.pcrc.gotbetterserver.ui.requestBody.user;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
@@ -9,11 +8,9 @@ import lombok.ToString;
 @Getter
 @ToString
 @NoArgsConstructor
-public class UserCreateRequest {
-    @NotNull
+public class UserLoginRequest {
+    @NotBlank
     private String username;
     @NotBlank
     private String password;
-    @NotBlank
-    private String nickname;
 }

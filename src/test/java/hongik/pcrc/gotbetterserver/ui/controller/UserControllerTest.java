@@ -1,10 +1,13 @@
 package hongik.pcrc.gotbetterserver.ui.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hongik.pcrc.gotbetterserver.application.domain.User;
+import hongik.pcrc.gotbetterserver.application.service.auth.JWTTokenProvider;
 import hongik.pcrc.gotbetterserver.application.service.user.UserService;
 import hongik.pcrc.gotbetterserver.exception.MessageType;
 import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
@@ -14,15 +17,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import static hongik.pcrc.gotbetterserver.application.service.user.UserReadUseCase.LoginRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -51,29 +55,29 @@ class UserControllerTest {
         // given
 
         DummyUserCreateRequest userIdWithCapital = DummyUserCreateRequest.builder()
-                .userId("testUserA")
+                .username("testUserA")
                 .password("qwer1234!")
                 .nickname("테스트유저1")
                 .build();
         DummyUserCreateRequest userIdWithKorean = DummyUserCreateRequest.builder()
-                .userId("안녕하세요")
+                .username("안녕하세요")
                 .password("qwer1234!")
                 .nickname("테스트유저2")
                 .build();
         DummyUserCreateRequest userIdShort = DummyUserCreateRequest.builder()
-                .userId("hel")
+                .username("hel")
                 .password("qwer1234!")
                 .nickname("테스트유저3")
                 .build();
         DummyUserCreateRequest ok = DummyUserCreateRequest.builder()
-                .userId("helloworld")
+                .username("helloworld")
                 .password("Qwer1234!")
                 .nickname("테스트유저4")
                 .build();
         // when
 
         // then
-        mvc.perform(post(BASE_URI + "/users")
+        mvc.perform(post(BASE_URI + "/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(userIdWithCapital))
                 )
@@ -85,7 +89,7 @@ class UserControllerTest {
                 });
 
 
-        mvc.perform(post(BASE_URI + "/users")
+        mvc.perform(post(BASE_URI + "/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(userIdShort))
                 )
@@ -96,7 +100,7 @@ class UserControllerTest {
                             .contains(MessageType.BAD_USER_ID_PATTERN.name());
                 });
 
-        mvc.perform(post(BASE_URI + "/users")
+        mvc.perform(post(BASE_URI + "/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(userIdWithKorean))
                 )
@@ -108,7 +112,7 @@ class UserControllerTest {
                 });
 
 
-        mvc.perform(post(BASE_URI + "/users")
+        mvc.perform(post(BASE_URI + "/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .characterEncoding(StandardCharsets.UTF_8)
                         .content(mapper.writeValueAsString(ok))
@@ -116,11 +120,11 @@ class UserControllerTest {
                 .andExpect(status().isCreated())
                 .andDo((result) -> {
                     DummyUserCreateRequest nicknameConflict = DummyUserCreateRequest.builder()
-                            .userId("helloworld2")
+                            .username("helloworld2")
                             .password("Qwer1234!")
                             .nickname("테스트유저4")
                             .build();
-                    mvc.perform(post(BASE_URI + "/users")
+                    mvc.perform(post(BASE_URI + "/users/register")
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(mapper.writeValueAsString(nicknameConflict))
                             ).andExpect(status().isConflict())
@@ -140,7 +144,7 @@ class UserControllerTest {
     void checkDuplicate() throws Exception {
         // given
         User userA = User.builder()
-                .userId("helloworld")
+                .username("helloworld")
                 .password("qwer1234!")
                 .nickname("테스트유저1")
                 .build();
@@ -225,100 +229,101 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("아이디 검증 테스트")
-    void validateUserId() {
+    @DisplayName("로그인 테스트")
+    @Transactional
+    void login() throws Exception {
         // given
-        String shortLengthError = "he";
-        String longLengthError = "hellohellohellohellohello";
-        String blankError = "";
-        String notAllowedCharacterError1 = "testUser";
-        String notAllowedCharacterError2 = "testuser#";
-        String notAllowedCharacterError3 = "testuser한글";
-        String ok1 = "test123";
-        String ok2 = "test-123";
-        String ok3 = "user_123131-hello-";
+        LoginRequest loginRequest200 = LoginRequest.builder()
+                .username("test1")
+                .password("Qwer1234@")
+                .build();
+
+        LoginRequest loginRequest400 = LoginRequest.builder()
+                .username("failed")
+                .password("d")
+                .build();
+
+        LoginRequest loginRequest400_2 = LoginRequest.builder()
+                .username("")
+                .password("")
+                .build();
+
         // when
+        ResultActions perform = mvc.perform(post(BASE_URI+ "/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(loginRequest200))
+        );
 
+        ResultActions perform400 = mvc.perform(post(BASE_URI + "/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(loginRequest400))
+        );
+
+        ResultActions perform400_2 = mvc.perform(post(BASE_URI + "/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(loginRequest400_2))
+        );
         // then
-        assertThat(validateUserId(shortLengthError).matches()).isFalse();
-        assertThat(validateUserId(longLengthError).matches()).isFalse();
-        assertThat(validateUserId(blankError).matches()).isFalse();
-        assertThat(validateUserId(notAllowedCharacterError1).matches()).isFalse();
-        assertThat(validateUserId(notAllowedCharacterError2).matches()).isFalse();
-        assertThat(validateUserId(notAllowedCharacterError3).matches()).isFalse();
-        assertThat(validateUserId(ok1).matches()).isTrue();
-        assertThat(validateUserId(ok2).matches()).isTrue();
-        assertThat(validateUserId(ok3).matches()).isTrue();
-
-    }
-    @Test
-    @DisplayName("비밀번호 검증 테스트")
-    void validatePassword() {
-        // given
-        String shortLengthError = "qwe!";
-        String longLengthError = "qwer!qwerwqrewqrwqrwqe";
-        String specialCharacterRequiredError = "qwer1234";
-        String blank = "";
-        String ok1 = "qwer!1234";
-        String ok2 = "qwer!@3#";
-        String ok3 = "Qerw12!2@#";
-        String ok4 = "Qerw12][@#";
-        // when
-
-        // then
-        assertThat(validatePassword(shortLengthError).matches()).isFalse();
-        assertThat(validatePassword(longLengthError).matches()).isFalse();
-        assertThat(validatePassword(specialCharacterRequiredError).matches()).isFalse();
-        assertThat(validatePassword(blank).matches()).isFalse();
-        assertThat(validatePassword(ok1).matches()).isTrue();
-        assertThat(validatePassword(ok2).matches()).isTrue();
-        assertThat(validatePassword(ok3).matches()).isTrue();
-        assertThat(validatePassword(ok4).matches()).isTrue();
+        perform.andExpect(status().isOk());
+        perform400.andExpect(status().isBadRequest());
+        perform400_2.andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("닉네임 검증 테스트")
-    void validateNickname() {
+    @DisplayName("토큰 검증 필터 테스트")
+    @Transactional
+    void jwtFilter() throws Exception {
         // given
-        String blank = "";
-        String shortLength = "d";
-        String longLength = "fksfjklsdfjlkdsjflkdsjflksdjfkdsljflkdsjfklsd";
-        String kor = "안녕하세요";
-        String ok = "testUSerA";
-        String longLength2 = "안녕하세요안녕하세요안녕하세요";
+        DummyUserCreateRequest ok = DummyUserCreateRequest.builder()
+                .username("helloworld")
+                .password("Qwer1234!")
+                .nickname("테스트유저4")
+                .build();
+
+        LoginRequest loginRequest200 = LoginRequest.builder()
+                .username("helloworld")
+                .password("Qwer1234!")
+                .build();
         // when
+        ResultActions register = mvc.perform(post(BASE_URI + "/users/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(ok))
+        );
+
+        ResultActions login = mvc.perform(post(BASE_URI + "/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(loginRequest200))
+        );
 
         // then
-        assertThat(validateNickname(blank)).isFalse();
-        assertThat(validateNickname(shortLength)).isFalse();
-        assertThat(validateNickname(longLength)).isFalse();
-        assertThat(validateNickname(longLength2)).isFalse();
-        assertThat(validateNickname(kor)).isTrue();
-        assertThat(validateNickname(ok)).isTrue();
-    }
+        register.andExpect(status().isCreated());
+        login.andExpect(result -> {
+            JsonNode jsonNode = mapper.readTree(result.getResponse().getContentAsString());
+            String accessToken = jsonNode.get("data").get("accessToken").asText();
+            log.info(accessToken);
+            ResultActions perform = mvc.perform(get(BASE_URI + "/users/test")
+                    .header(HttpHeaders.AUTHORIZATION, accessToken)
+            ).andDo(result1 -> {
+                log.info(result1.getResponse().getContentAsString());
+            });
+        });
 
-    private Matcher validateUserId(String userId) {
-        String userIdPattern = "^[a-z0-9_-]{5,20}$";
-        return Pattern.compile(userIdPattern)
-                .matcher(userId);
-    }
-
-    private Matcher validatePassword(String password) {
-        String passwordPattern = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?]{8,16}$";
-        return Pattern.compile(passwordPattern)
-                .matcher(password);
-    }
-
-    private boolean validateNickname(String nickname) {
-        return !nickname.isBlank() && nickname.length() >= 2 && nickname.length() <= 12;
     }
 
     @Getter
     @Builder
     @ToString
     static class DummyUserCreateRequest {
-        private String userId;
+        private String username;
         private String password;
         private String nickname;
+    }
+
+    @Getter
+    @ToString
+    @AllArgsConstructor
+    static class JWTToken {
+        private String accessToken;
+        private String refreshToken;
     }
 }

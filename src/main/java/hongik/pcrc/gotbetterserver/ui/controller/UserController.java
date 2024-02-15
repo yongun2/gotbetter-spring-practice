@@ -1,18 +1,24 @@
 package hongik.pcrc.gotbetterserver.ui.controller;
 
 import hongik.pcrc.gotbetterserver.application.domain.User;
+import hongik.pcrc.gotbetterserver.application.domain.auth.JWTToken;
+import hongik.pcrc.gotbetterserver.application.service.user.UserReadUseCase;
 import hongik.pcrc.gotbetterserver.application.service.user.UserService;
 import hongik.pcrc.gotbetterserver.exception.GotbetterException;
 import hongik.pcrc.gotbetterserver.exception.MessageType;
 import hongik.pcrc.gotbetterserver.ui.requestBody.user.UserCreateRequest;
+import hongik.pcrc.gotbetterserver.ui.requestBody.user.UserLoginRequest;
 import hongik.pcrc.gotbetterserver.ui.view.ApiResponseView;
+import hongik.pcrc.gotbetterserver.ui.view.user.JWTTokenView;
 import hongik.pcrc.gotbetterserver.ui.view.user.UserView;
 import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,38 +33,36 @@ public class UserController {
 
     private final UserService userService;
 
-    private final PasswordEncoder passwordEncoder;
-
-
-    @PostMapping("")
+    @PostMapping("/register")
     public ResponseEntity<ApiResponseView<UserView>> signup(@RequestBody @Validated UserCreateRequest createRequest) {
 
         // check id pattern
-        Matcher userIdMatcher = validateUserId(createRequest.getUserId());
+        String userIdPattern = "^[a-z0-9_-]{5,20}$";
+        Matcher userIdMatcher = Pattern.compile(userIdPattern)
+                .matcher(createRequest.getUsername());
 
         if (!userIdMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
         }
 
         // check password pattern
-        Matcher passwordMatcher = validatePassword(createRequest.getPassword());
+        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()-_=+\\\\|{};:'\",<.>/?])[A-Za-z\\d!@#$%^&*()-_=+\\\\|{};:'\",<.>/?]{8,16}$";
+        Matcher passwordMatcher = Pattern.compile(passwordPattern)
+                .matcher(createRequest.getPassword());
 
         if (!passwordMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_PASSWORD_PATTERN);
         }
 
         // check nickname pattern
-        if (!validateNickname(createRequest.getNickname())) {
+        if (createRequest.getNickname().length() < 4 || createRequest.getNickname().length() > 12) {
             throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
         }
 
-        // password encode before store
-        String encodedPassword = passwordEncoder.encode(createRequest.getPassword());
-
         User createdUser = userService.createUser(
                 User.builder()
-                        .userId(createRequest.getUserId())
-                        .password(encodedPassword)
+                        .username(createRequest.getUsername())
+                        .password(createRequest.getPassword())
                         .nickname(createRequest.getNickname())
                         .build()
         );
@@ -68,6 +72,18 @@ public class UserController {
                 .body(new ApiResponseView<>(new UserView(createdUser)));
 
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponseView<JWTTokenView>> login(@RequestBody UserLoginRequest request) {
+        JWTToken jwtToken = userService.login(UserReadUseCase.LoginRequest.builder()
+                .username(request.getUsername())
+                .password(request.getPassword())
+                .build());
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(new ApiResponseView<>(new JWTTokenView(jwtToken)));
+    }
+
     @GetMapping("/duplicate")
     public ResponseEntity<ApiResponseView<UserView>> checkDuplicate(@RequestParam @Nullable String userId, @RequestParam @Nullable String nickname) {
 
@@ -80,24 +96,24 @@ public class UserController {
         // check is userId duplicate
         if (userId != null) {
 
-            if(!validateUserId(userId).matches()) {
+            if(userId.isBlank()) {
                 throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
             }
 
-            isDuplicate = userService.checkUserIdDuplicate(userId);
+            isDuplicate = userService.checkUsernameDuplicate(userId);
             if (isDuplicate) {
                 throw new GotbetterException(MessageType.DUPLICATED_USER_ID);
             }
 
             result = User.builder()
-                    .userId(userId)
+                    .username(userId)
                     .build();
         }
 
         // check is nickname duplicate
         if (nickname != null) {
 
-            if(!validateNickname(nickname)) {
+            if(nickname.isBlank()) {
                 throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
             }
 
@@ -119,19 +135,14 @@ public class UserController {
                 .body(new ApiResponseView<>(new UserView(result)));
     }
 
-    private Matcher validateUserId(String userId) {
-        String userIdPattern = "^[a-z0-9_-]{5,20}$";
-        return Pattern.compile(userIdPattern)
-                .matcher(userId);
-    }
+    @GetMapping("/test")
+    ResponseEntity<String> hello(@AuthenticationPrincipal String user) {
+        log.info("user");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-    private Matcher validatePassword(String password) {
-        String passwordPattern = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?]{8,16}$";
-        return Pattern.compile(passwordPattern)
-                .matcher(password);
-    }
+        log.info("hello world {}", authentication.getDetails());
 
-    private boolean validateNickname(String nickname) {
-        return !nickname.isBlank() && nickname.length() >= 2 && nickname.length() <= 12;
+        return ResponseEntity.status(HttpStatus.OK)
+                .body("hello");
     }
 }

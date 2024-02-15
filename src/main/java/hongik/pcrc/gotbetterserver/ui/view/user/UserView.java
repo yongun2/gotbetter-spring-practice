@@ -11,12 +11,12 @@ import lombok.ToString;
 public class UserView {
 
     private final int id;
-    private final String userId;
+    private final String username;
     private final String nickname;
 
     public UserView(User user) {
         this.id = user.getId();
-        this.userId = user.getUserId();
+        this.username = user.getUsername();
         this.nickname = user.getNickname();
     }
 }

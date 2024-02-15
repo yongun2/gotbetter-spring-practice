@@ -1,17 +1,24 @@
 package hongik.pcrc.gotbetterserver.ui.controller;
 
 import hongik.pcrc.gotbetterserver.application.domain.User;
+import hongik.pcrc.gotbetterserver.application.domain.auth.JWTToken;
+import hongik.pcrc.gotbetterserver.application.service.user.UserReadUseCase;
 import hongik.pcrc.gotbetterserver.application.service.user.UserService;
 import hongik.pcrc.gotbetterserver.exception.GotbetterException;
 import hongik.pcrc.gotbetterserver.exception.MessageType;
 import hongik.pcrc.gotbetterserver.ui.requestBody.user.UserCreateRequest;
+import hongik.pcrc.gotbetterserver.ui.requestBody.user.UserLoginRequest;
 import hongik.pcrc.gotbetterserver.ui.view.ApiResponseView;
+import hongik.pcrc.gotbetterserver.ui.view.user.JWTTokenView;
 import hongik.pcrc.gotbetterserver.ui.view.user.UserView;
 import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -30,13 +37,13 @@ public class UserController {
     private final PasswordEncoder passwordEncoder;
 
 
-    @PostMapping("")
+    @PostMapping("/register")
     public ResponseEntity<ApiResponseView<UserView>> signup(@RequestBody @Validated UserCreateRequest createRequest) {
 
         // check id pattern
         String userIdPattern = "^[a-z0-9_-]{5,20}$";
         Matcher userIdMatcher = Pattern.compile(userIdPattern)
-                .matcher(createRequest.getUserId());
+                .matcher(createRequest.getUsername());
 
         if (!userIdMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
@@ -61,7 +68,7 @@ public class UserController {
 
         User createdUser = userService.createUser(
                 User.builder()
-                        .userId(createRequest.getUserId())
+                        .username(createRequest.getUsername())
                         .password(encodedPassword)
                         .nickname(createRequest.getNickname())
                         .build()
@@ -71,6 +78,17 @@ public class UserController {
                 .status(HttpStatus.CREATED)
                 .body(new ApiResponseView<>(new UserView(createdUser)));
 
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponseView<JWTTokenView>> login(@RequestBody UserLoginRequest request) {
+        JWTToken jwtToken = userService.login(UserReadUseCase.LoginRequest.builder()
+                .username(request.getUsername())
+                .password(request.getPassword())
+                .build());
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(new ApiResponseView<>(new JWTTokenView(jwtToken)));
     }
 
     @GetMapping("/duplicate")
@@ -95,7 +113,7 @@ public class UserController {
             }
 
             result = User.builder()
-                    .userId(userId)
+                    .username(userId)
                     .build();
         }
 
@@ -122,5 +140,16 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(new ApiResponseView<>(new UserView(result)));
+    }
+
+    @GetMapping("/test")
+    ResponseEntity<String> hello(@AuthenticationPrincipal String user) {
+        log.info("user");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        log.info("hello world {}", authentication.getDetails());
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body("hello");
     }
 }

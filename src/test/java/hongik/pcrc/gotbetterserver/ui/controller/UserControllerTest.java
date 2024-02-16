@@ -150,7 +150,7 @@ class UserControllerTest {
                 .build();
 
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("userId", "fjdk");
+        params.add("username", "fjdk");
         params.add("nickname", "fjdk");
         // when
         userService.createUser(userA);
@@ -200,7 +200,7 @@ class UserControllerTest {
 
         // 409 Error: userId duplicate
         mvc.perform(get(BASE_URI + "/users/duplicate")
-                        .param("userId", "helloworld")
+                        .param("username", "helloworld")
                 )
                 .andExpect(status().isConflict())
                 .andDo(result -> {
@@ -211,7 +211,7 @@ class UserControllerTest {
 
         // 200 Ok
         mvc.perform(get(BASE_URI + "/users/duplicate")
-                        .param("userId", "helloworld2")
+                        .param("username", "helloworld2")
                 )
                 .andExpect(status().isOk())
                 .andDo(result -> {
@@ -222,7 +222,13 @@ class UserControllerTest {
 
         // 400 Error: userId with blank
         mvc.perform(get(BASE_URI + "/users/duplicate")
-                        .param("userId", "")
+                        .param("username", "")
+                )
+                .andExpect(status().isBadRequest());
+
+        // 400 Error: userId with blank
+        mvc.perform(get(BASE_URI + "/users/duplicate")
+                        .param("hello", "")
                 )
                 .andExpect(status().isBadRequest());
 

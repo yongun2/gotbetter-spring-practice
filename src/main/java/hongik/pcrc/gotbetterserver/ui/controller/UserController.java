@@ -37,25 +37,21 @@ public class UserController {
     public ResponseEntity<ApiResponseView<UserView>> signup(@RequestBody @Validated UserCreateRequest createRequest) {
 
         // check id pattern
-        String userIdPattern = "^[a-z0-9_-]{5,20}$";
-        Matcher userIdMatcher = Pattern.compile(userIdPattern)
-                .matcher(createRequest.getUsername());
+        Matcher usernameMatcher = validateUsername(createRequest.getUsername());
 
-        if (!userIdMatcher.matches()) {
+        if (!usernameMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
         }
 
         // check password pattern
-        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()-_=+\\\\|{};:'\",<.>/?])[A-Za-z\\d!@#$%^&*()-_=+\\\\|{};:'\",<.>/?]{8,16}$";
-        Matcher passwordMatcher = Pattern.compile(passwordPattern)
-                .matcher(createRequest.getPassword());
+        Matcher passwordMatcher = validatePassword(createRequest.getPassword());
 
         if (!passwordMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_PASSWORD_PATTERN);
         }
 
         // check nickname pattern
-        if (createRequest.getNickname().length() < 4 || createRequest.getNickname().length() > 12) {
+        if (!validateNickname(createRequest.getNickname())) {
             throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
         }
 
@@ -85,35 +81,35 @@ public class UserController {
     }
 
     @GetMapping("/duplicate")
-    public ResponseEntity<ApiResponseView<UserView>> checkDuplicate(@RequestParam @Nullable String userId, @RequestParam @Nullable String nickname) {
+    public ResponseEntity<ApiResponseView<UserView>> checkDuplicate(@RequestParam @Nullable String username, @RequestParam @Nullable String nickname) {
 
-        if (userId != null && nickname != null) {
+        if (username != null && nickname != null || username == null && nickname == null) {
             throw new GotbetterException(MessageType.BAD_REQUEST);
         }
 
         boolean isDuplicate;
         User result = null;
         // check is userId duplicate
-        if (userId != null) {
+        if (username != null) {
 
-            if(userId.isBlank()) {
+            if (!validateUsername(username).matches()) {
                 throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
             }
 
-            isDuplicate = userService.checkUsernameDuplicate(userId);
+            isDuplicate = userService.checkUsernameDuplicate(username);
             if (isDuplicate) {
                 throw new GotbetterException(MessageType.DUPLICATED_USER_ID);
             }
 
             result = User.builder()
-                    .username(userId)
+                    .username(username)
                     .build();
         }
 
         // check is nickname duplicate
         if (nickname != null) {
 
-            if(nickname.isBlank()) {
+            if (!validateNickname(nickname)) {
                 throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
             }
 
@@ -144,5 +140,21 @@ public class UserController {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body("hello");
+    }
+
+    private Matcher validateUsername(String userId) {
+        String userIdPattern = "^[a-z0-9_-]{5,20}$";
+        return Pattern.compile(userIdPattern)
+                .matcher(userId);
+    }
+
+    private Matcher validatePassword(String password) {
+        String passwordPattern = "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?]{8,16}$";
+        return Pattern.compile(passwordPattern)
+                .matcher(password);
+    }
+
+    private boolean validateNickname(String nickname) {
+        return !nickname.isBlank() && nickname.length() >= 2 && nickname.length() <= 12;
     }
 }

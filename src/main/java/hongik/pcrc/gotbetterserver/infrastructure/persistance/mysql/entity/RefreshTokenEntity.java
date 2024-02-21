@@ -7,9 +7,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
-@Setter
+@Entity
+@Table(name = "refresh_tokens")
 @NoArgsConstructor
-@Entity(name = "REFRESH_TOKEN")
 public class RefreshTokenEntity {
     @Id
     @Column(name = "refresh_token_id")

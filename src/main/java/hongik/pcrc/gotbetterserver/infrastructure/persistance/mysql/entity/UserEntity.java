@@ -6,8 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@Entity
+@Table(name = "users")
 @NoArgsConstructor
-@Entity(name = "USER")
 public class UserEntity {
 
     @Id

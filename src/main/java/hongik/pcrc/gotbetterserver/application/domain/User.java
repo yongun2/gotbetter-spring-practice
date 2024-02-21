@@ -1,6 +1,7 @@
 package hongik.pcrc.gotbetterserver.application.domain;
 
 
+import hongik.pcrc.gotbetterserver.application.domain.auth.RefreshToken;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
@@ -14,5 +15,6 @@ public class User {
     private final String password;
     private final String nickname;
     private final String email;
+    private final RefreshToken refreshToken;
 }
 

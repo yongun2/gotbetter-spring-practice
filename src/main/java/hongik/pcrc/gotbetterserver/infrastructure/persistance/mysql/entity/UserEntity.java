@@ -24,18 +24,22 @@ public class UserEntity {
 
     private String email;
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "refresh_token_id")
     private RefreshTokenEntity refreshTokenEntity;
 
     public User toUser() {
-        return User.builder()
+        User.UserBuilder builder = User.builder()
                 .id(this.id)
                 .username(this.username)
                 .password(this.password)
                 .nickname(this.nickname)
-                .email(this.email)
-                .build();
+                .email(this.email);
+
+        if (this.refreshTokenEntity != null) {
+            builder.refreshToken(this.refreshTokenEntity.toRefreshToken());
+        }
+        return builder.build();
     }
 
     public UserEntity(User user) {
@@ -44,14 +48,10 @@ public class UserEntity {
         this.password = user.getPassword();
         this.nickname = user.getNickname();
         this.email = user.getEmail();
-    }
-    public UserEntity(User user, RefreshTokenEntity refreshTokenEntity) {
-        this.id = user.getId();
-        this.username = user.getUsername();
-        this.password = user.getPassword();
-        this.nickname = user.getNickname();
-        this.email = user.getEmail();
-        this.refreshTokenEntity = refreshTokenEntity;
+
+        if (user.getRefreshToken() != null) {
+            this.refreshTokenEntity = new RefreshTokenEntity(user.getRefreshToken());
+        }
     }
 }
 

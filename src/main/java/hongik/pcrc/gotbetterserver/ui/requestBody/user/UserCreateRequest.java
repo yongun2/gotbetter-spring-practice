@@ -10,7 +10,7 @@ import lombok.ToString;
 @ToString
 @NoArgsConstructor
 public class UserCreateRequest {
-    @NotNull
+    @NotBlank
     private String username;
     @NotBlank
     private String password;

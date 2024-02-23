@@ -7,8 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<UserEntity, Integer> {
-    @Query("select u from UserEntity u join fetch u.refreshTokenEntity where u.username = :username")
+    @Query("select u from UserEntity u left join fetch u.refreshTokenEntity where u.username = :username")
     Optional<UserEntity> findUserEntityByUsername(String username);
-    @Query("select u from UserEntity u join fetch u.refreshTokenEntity where u.nickname = :nickname")
+    @Query("select u from UserEntity u left join fetch u.refreshTokenEntity where u.nickname = :nickname")
     Optional<UserEntity> findUserEntityByNickname(String nickname);
 }

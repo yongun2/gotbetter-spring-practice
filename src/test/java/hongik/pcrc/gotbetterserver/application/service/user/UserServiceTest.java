@@ -5,24 +5,25 @@ import hongik.pcrc.gotbetterserver.application.domain.User;
 import hongik.pcrc.gotbetterserver.application.service.user.UserReadUseCase.LoginRequest;
 import hongik.pcrc.gotbetterserver.exception.GotbetterException;
 import hongik.pcrc.gotbetterserver.exception.MessageType;
-import hongik.pcrc.gotbetterserver.infrastructure.persistance.mysql.entity.RefreshTokenEntity;
 import hongik.pcrc.gotbetterserver.infrastructure.persistance.mysql.entity.UserEntity;
 import hongik.pcrc.gotbetterserver.infrastructure.persistance.mysql.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 
+import static hongik.pcrc.gotbetterserver.application.service.user.UserOperationUseCase.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Transactional
 @Slf4j
+@SpringBootTest
 class UserServiceTest {
 
     @Autowired
@@ -30,91 +31,133 @@ class UserServiceTest {
     @Autowired
     private UserRepository userRepository;
 
-    @Test
-    void createUser() {
-        // given
-        User userA = User.builder()
-                .id(1)
-                .username("testUserA")
-                .password("Qwer1234!")
-                .nickname("hello")
+    public static final String DUMMY_USERNAME = "logintest";
+    public static final String DUMMY_PASSWORD = "qwer1234!";
+    public static final String DUMMY_NICKNAME = "loginDummy";
+
+    @BeforeEach
+    void initDummy() {
+        UserCreateCommand command = UserCreateCommand.builder()
+                .username(DUMMY_USERNAME)
+                .password(DUMMY_PASSWORD)
+                .nickname(DUMMY_NICKNAME)
                 .build();
-        // when
-        User user = userService.createUser(userA);
-        // then
-        assertThat(user.getUsername()).isEqualTo("testUserA");
+
+        userService.createUser(command);
+    }
+
+    @AfterEach
+    void deleteDummy() {
+        userRepository.deleteAll();
     }
 
     @Test
-    void checkUserIdDuplicate() {
+    @DisplayName("유저 회원가입 테스트")
+    void createTest() {
         // given
-        User userA = User.builder()
-                .id(1)
-                .username("testUserA")
-                .password("Qwer1234!")
-                .nickname("hello")
+        UserCreateCommand success_command = UserCreateCommand.builder()
+                .username("asd1234")
+                .password("qwer1234!")
+                .nickname("testUserA")
+                .email("test@gmail.com")
                 .build();
-        User user = userService.createUser(userA);
-
+        UserCreateCommand fail_duplicate_nickname = UserCreateCommand.builder()
+                .username("asd123412")
+                .password("qwer1234!")
+                .nickname("testUserA")
+                .email("test@gmail.com")
+                .build();
+        UserCreateCommand fail_long_username = UserCreateCommand.builder()
+                .username("asd1234asd1234asd1234asd1234")
+                .password("qwer1234!")
+                .nickname("testUserB")
+                .email("test@gmail.com")
+                .build();
+        UserCreateCommand fail_long_nickname = UserCreateCommand.builder()
+                .username("asd1235")
+                .password("qwer1234!")
+                .nickname("testUserBtestUserBtestUserBtestUserBtestUserBtestUserB")
+                .email("test@gmail.com")
+                .build();
         // when
-        boolean check1 = userService.checkUsernameDuplicate("userA");
-        boolean check2 = userService.checkUsernameDuplicate("df");
-        boolean check3 = userService.checkUsernameDuplicate("usera");
-        boolean check4 = userService.checkUsernameDuplicate("testUserA");
+        User user = userService.createUser(success_command);
+
         // then
-        assertThat(check1).isFalse();
-        assertThat(check2).isFalse();
-        assertThat(check3).isFalse();
-        assertThat(check4).isTrue();
+        assertThat(user.getUsername()).isEqualTo(success_command.getUsername());
+        assertThat(user.getPassword()).isNotEqualTo(success_command.getPassword());
+
+        assertThatThrownBy(() -> userService.createUser(success_command))
+                .isInstanceOf(GotbetterException.class)
+                .hasMessage(MessageType.DUPLICATED_USER_ID.getMessage());
+
+        assertThatThrownBy(() -> userService.createUser(fail_duplicate_nickname))
+                .isInstanceOf(GotbetterException.class)
+                .hasMessage(MessageType.DUPLICATE_NICKNAME.getMessage());
+
+        assertThatThrownBy(() -> userService.createUser(fail_long_username))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        assertThatThrownBy(() -> userService.createUser(fail_long_nickname))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        assertThat(userRepository.findUserEntityByUsername(fail_long_username.getUsername()).isEmpty()).isTrue();
+        assertThat(userRepository.findUserEntityByNickname(fail_long_nickname.getNickname()).isEmpty()).isTrue();
     }
 
     @Test
     @DisplayName("로그인 테스트")
-    @Transactional
-    void loginTest() {
+    void login() {
         // given
-        User testUserA = User.builder()
-                .username("qwer1235")
-                .password("qwer1234!")
-                .nickname("testUserC")
+        LoginRequest success_login_request = LoginRequest.builder()
+                .username(DUMMY_USERNAME)
+                .password(DUMMY_PASSWORD)
                 .build();
 
-        userService.createUser(testUserA);
+        LoginRequest fail_login_request_bad_username = LoginRequest.builder()
+                .username("")
+                .password(DUMMY_PASSWORD)
+                .build();
+
+        LoginRequest fail_login_request_bad_password = LoginRequest.builder()
+                .username(DUMMY_USERNAME)
+                .password("")
+                .build();
         // when
-        LoginRequest request = LoginRequest.builder()
-                .username("qwer1235")
-                .password("qwer1234!")
-                .build();
-        JWTToken jwt = userService.login(request);
 
-        Optional<UserEntity> userEntityByNickname = userRepository.findUserEntityByNickname("testUserC");
+        JWTToken jwtToken = userService.login(success_login_request);
+        Optional<UserEntity> userEntity = userRepository.findUserEntityByUsername(DUMMY_USERNAME);
         // then
-        userEntityByNickname.ifPresentOrElse(userEntity -> {
-            RefreshTokenEntity refreshTokenEntity = userEntity.getRefreshTokenEntity();
-            assertThat(jwt.getRefreshToken()).isEqualTo(refreshTokenEntity.getToken());
-        }, () -> {});
+        assertThat(userEntity.isPresent()).isTrue();
+        assertThat(userEntity.get().getRefreshTokenEntity()).isNotNull();
+        assertThat(userEntity.get().getRefreshTokenEntity().getToken()).isEqualTo(jwtToken.getRefreshToken());
 
+        assertThatThrownBy(() -> userService.login(fail_login_request_bad_username))
+                .isInstanceOf(GotbetterException.class)
+                .hasMessage(MessageType.USER_NOT_FOUND.getMessage());
+
+        assertThatThrownBy(() -> userService.login(fail_login_request_bad_password))
+                .isInstanceOf(GotbetterException.class)
+                .hasMessage(MessageType.USER_NOT_FOUND.getMessage());
     }
 
     @Test
     @DisplayName("로그아웃 테스트")
-    @Transactional
     void logout() {
         // given
-
+        LoginRequest success_login_request = LoginRequest.builder()
+                .username(DUMMY_USERNAME)
+                .password(DUMMY_PASSWORD)
+                .build();
         // when
-        userService.logout("testUserB");
+        userService.login(success_login_request);
+        userService.logout(DUMMY_NICKNAME);
         // then
-        userRepository.findUserEntityByUsername("test1")
-                .ifPresent(userEntity -> {
-                    log.info(String.valueOf(userEntity.getRefreshTokenEntity()));
-                    assertThat(userEntity.getRefreshTokenEntity()).isNull();
-                });
-
-        Assertions.assertThatThrownBy(() -> userService.logout("helloworld"))
+        Optional<UserEntity> userEntity = userRepository.findUserEntityByUsername(DUMMY_USERNAME);
+        assertThat(userEntity.isPresent()).isTrue();
+        assertThat(userEntity.get().getRefreshTokenEntity()).isNull();
+        assertThatThrownBy(() -> userService.logout("fd"))
                 .isInstanceOf(GotbetterException.class)
                 .hasMessage(MessageType.USER_NOT_FOUND.getMessage());
-
-
     }
+
 }

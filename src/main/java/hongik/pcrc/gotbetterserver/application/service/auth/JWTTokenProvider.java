@@ -50,7 +50,7 @@ public class JWTTokenProvider {
                 .subject("USER")
                 .claim("nickname", authentication.getPrincipal())
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() - REFRESH_TOKEN_EXPIRATION_TIME))
+                .expiration(new Date(now.getTime() + REFRESH_TOKEN_EXPIRATION_TIME))
                 .signWith(key)
                 .compact();
 

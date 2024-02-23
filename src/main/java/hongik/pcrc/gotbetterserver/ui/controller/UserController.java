@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static hongik.pcrc.gotbetterserver.application.service.user.UserOperationUseCase.*;
+
 @Slf4j
 @RestController
 @AllArgsConstructor
@@ -34,32 +36,32 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponseView<UserView>> signup(@RequestBody @Validated UserCreateRequest createRequest) {
+    public ResponseEntity<ApiResponseView<UserView>> signup(@RequestBody @Validated UserCreateRequest request) {
 
         // check id pattern
-        Matcher usernameMatcher = validateUsername(createRequest.getUsername());
+        Matcher usernameMatcher = validateUsername(request.getUsername());
 
         if (!usernameMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_USER_ID_PATTERN);
         }
 
         // check password pattern
-        Matcher passwordMatcher = validatePassword(createRequest.getPassword());
+        Matcher passwordMatcher = validatePassword(request.getPassword());
 
         if (!passwordMatcher.matches()) {
             throw new GotbetterException(MessageType.BAD_PASSWORD_PATTERN);
         }
 
         // check nickname pattern
-        if (!validateNickname(createRequest.getNickname())) {
+        if (validateNickname(request.getNickname())) {
             throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
         }
 
         User createdUser = userService.createUser(
-                User.builder()
-                        .username(createRequest.getUsername())
-                        .password(createRequest.getPassword())
-                        .nickname(createRequest.getNickname())
+                UserCreateCommand.builder()
+                        .username(request.getUsername())
+                        .password(request.getPassword())
+                        .nickname(request.getNickname())
                         .build()
         );
 
@@ -70,7 +72,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponseView<JWTTokenView>> login(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<ApiResponseView<JWTTokenView>> login(@RequestBody @Validated UserLoginRequest request) {
         JWTToken jwtToken = userService.login(UserReadUseCase.LoginRequest.builder()
                 .username(request.getUsername())
                 .password(request.getPassword())
@@ -79,7 +81,6 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(new ApiResponseView<>(new JWTTokenView(jwtToken)));
     }
-
     @GetMapping("/duplicate")
     public ResponseEntity<ApiResponseView<UserView>> checkDuplicate(@RequestParam @Nullable String username, @RequestParam @Nullable String nickname) {
 
@@ -109,7 +110,7 @@ public class UserController {
         // check is nickname duplicate
         if (nickname != null) {
 
-            if (!validateNickname(nickname)) {
+            if (validateNickname(nickname)) {
                 throw new GotbetterException(MessageType.BAD_NICKNAME_PATTERN);
             }
 
@@ -155,6 +156,6 @@ public class UserController {
     }
 
     private boolean validateNickname(String nickname) {
-        return !nickname.isBlank() && nickname.length() >= 2 && nickname.length() <= 12;
+        return nickname.isBlank() || nickname.length() < 2 || nickname.length() > 12;
     }
 }

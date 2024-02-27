@@ -55,6 +55,7 @@ public class GotbetterSecurityConfig {
                         .requestMatchers(
                                 "/api/v1/users/register",
                                 "/api/v1/users/duplicate",
+                                "/api/v1/study-rooms/**",
                                 "/api/v1/users/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/test").permitAll()
                         .anyRequest().authenticated()
